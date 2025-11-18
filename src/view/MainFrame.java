@@ -31,6 +31,7 @@ import javax.swing.table.JTableHeader;
 
 import logic.RecommendationEngine;
 import model.Program;
+import security.User;
 
 public class MainFrame extends JFrame {
 	private final JTextField salaryField = new JTextField(15);
@@ -50,14 +51,17 @@ public class MainFrame extends JFrame {
 	private final JTable resultTable = new JTable(tableModel);
 	private final JLabel statusLabel = new JLabel(" ");
 	private final RecommendationEngine engine;
+	private final User user;
 
-	public MainFrame(RecommendationEngine engine) {
+	public MainFrame(RecommendationEngine engine, User user) {
 		super("Degree Program Recommender");
 		this.engine = engine;
+		this.user = user;
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(1300, 400);
 		setLocationRelativeTo(null);
 		initUI();
+		statusLabel.setText("Signed in as " + user.getUsername());
 	}
 
 	private void initUI() {
@@ -92,7 +96,10 @@ public class MainFrame extends JFrame {
 	}
 
 	private JPanel createTitlePanel() {
-		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		FlowLayout layout = new FlowLayout(FlowLayout.LEFT);
+		layout.setHgap(15);
+		layout.setVgap(5);
+		JPanel panel = new JPanel(layout);
 		panel.setBackground(new Color(245, 245, 245));
 		
 		JLabel titleLabel = new JLabel("Find Your Ideal Degree Program");
@@ -100,6 +107,13 @@ public class MainFrame extends JFrame {
 		titleLabel.setForeground(new Color(33, 37, 41));
 		
 		panel.add(titleLabel);
+		
+		if (user != null) {
+			JLabel userLabel = new JLabel("Welcome, " + user.getUsername());
+			userLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+			userLabel.setForeground(new Color(52, 58, 64));
+			panel.add(userLabel);
+		}
 		return panel;
 	}
 
@@ -162,7 +176,7 @@ public class MainFrame extends JFrame {
 		recommendBtn.setForeground(Color.WHITE);
 		recommendBtn.setFocusPainted(false);
 		recommendBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
-		recommendBtn.setCursor(new Cursor(HAND_CURSOR));
+		recommendBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		recommendBtn.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createLineBorder(new Color(0, 123, 255), 1, true),
 			BorderFactory.createEmptyBorder(5, 15, 5, 15)
@@ -173,7 +187,7 @@ public class MainFrame extends JFrame {
 		clearBtn.setForeground(Color.WHITE);
 		clearBtn.setFocusPainted(false);
 		clearBtn.setFont(new Font("SansSerif", Font.PLAIN, 13));
-		clearBtn.setCursor(new Cursor(HAND_CURSOR));
+		clearBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		clearBtn.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createLineBorder(new Color(108, 117, 125), 1, true),
 			BorderFactory.createEmptyBorder(5, 15, 5, 15)
