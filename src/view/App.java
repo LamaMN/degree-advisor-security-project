@@ -2,7 +2,8 @@ package view;
 
 
 import javax.swing.SwingUtilities;
-import logic.RecommendationEngine;
+
+import controllers.RecommendationEngine;
 import model.ProgramRepository;
 import security.AuthService;
 

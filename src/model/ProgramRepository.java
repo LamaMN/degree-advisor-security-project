@@ -36,7 +36,7 @@ public class ProgramRepository {
 
  public List<Program> getPrograms(){ return Collections.unmodifiableList(programs); }
 
- // Optionally add method to add program at runtime (not used now)
+ 
  public void addProgram(Program p){ programs.add(p); }
 }
 

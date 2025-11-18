@@ -22,7 +22,7 @@ public class Program {
 
  private final String name;
  private final Category category;
- private final double minIndustrySalary; // SAR
+ private final double minIndustrySalary; 
  private final double minRequiredPreviousGPA;
  private final InterestLevel analyticalInterestRequired;
  private final double requiredAcceptableGPAAfterDegree; // industry acceptable after degree

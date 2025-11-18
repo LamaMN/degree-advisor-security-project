@@ -1,4 +1,4 @@
-package logic;
+package controllers;
 
 
 import java.util.*;
