@@ -9,6 +9,10 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -52,26 +56,44 @@ public class MainFrame extends JFrame {
 	private final JLabel statusLabel = new JLabel(" ");
 	private final RecommendationEngine engine;
 	private final User user;
+	
+	// For dragging window
+	private Point mouseDownCompCoords;
 
 	public MainFrame(RecommendationEngine engine, User user) {
-		super("Degree Program Recommender");
+		super("  Degree Program Recommender");
 		this.engine = engine;
 		this.user = user;
+		
+		// Remove default window decorations
+		setUndecorated(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(1300, 400);
+		setSize(1300, 600);
 		setLocationRelativeTo(null);
+		
 		initUI();
 		statusLabel.setText("Signed in as " + user.getUsername());
 	}
 
 	private void initUI() {
-		// Main container with padding
-		JPanel mainContainer = new JPanel(new BorderLayout(10, 10));
-		mainContainer.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-		mainContainer.setBackground(new Color(245, 245, 245));
+		// Main container with rounded border effect
+		JPanel mainContainer = new JPanel(new BorderLayout(0, 0));
+		mainContainer.setBackground(new Color(250, 251, 252));
+		mainContainer.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(new Color(200, 205, 210), 2),
+			BorderFactory.createEmptyBorder(0, 0, 0, 0)
+		));
 
-		// Title panel
-		JPanel titlePanel = createTitlePanel();
+		// Custom title bar
+		JPanel titleBar = createCustomTitleBar();
+		
+		// Content area
+		JPanel contentArea = new JPanel(new BorderLayout(10, 10));
+		contentArea.setBorder(BorderFactory.createEmptyBorder(10, 15, 15, 15));
+		contentArea.setBackground(new Color(250, 251, 252));
+
+		// Welcome panel
+		JPanel welcomePanel = createWelcomePanel();
 		
 		// Input panel with improved styling
 		JPanel inputPanel = createInputPanel();
@@ -83,10 +105,13 @@ public class MainFrame extends JFrame {
 		JPanel statusPanel = createStatusPanel();
 
 		// Add components
-		mainContainer.add(titlePanel, BorderLayout.NORTH);
-		mainContainer.add(inputPanel, BorderLayout.WEST);
-		mainContainer.add(resultsPanel, BorderLayout.CENTER);
-		mainContainer.add(statusPanel, BorderLayout.SOUTH);
+		contentArea.add(welcomePanel, BorderLayout.NORTH);
+		contentArea.add(inputPanel, BorderLayout.WEST);
+		contentArea.add(resultsPanel, BorderLayout.CENTER);
+		contentArea.add(statusPanel, BorderLayout.SOUTH);
+
+		mainContainer.add(titleBar, BorderLayout.NORTH);
+		mainContainer.add(contentArea, BorderLayout.CENTER);
 
 		setContentPane(mainContainer);
 		
@@ -95,113 +120,230 @@ public class MainFrame extends JFrame {
 		clearBtn.addActionListener(e -> onClear());
 	}
 
-	private JPanel createTitlePanel() {
-		FlowLayout layout = new FlowLayout(FlowLayout.LEFT);
-		layout.setHgap(15);
-		layout.setVgap(5);
-		JPanel panel = new JPanel(layout);
-		panel.setBackground(new Color(245, 245, 245));
+	private JPanel createCustomTitleBar() {
+		JPanel titleBar = new JPanel(new BorderLayout());
+		titleBar.setBackground(new Color(88, 86, 214));
+		titleBar.setPreferredSize(new Dimension(0, 40));
 		
-		JLabel titleLabel = new JLabel("Find Your Ideal Degree Program");
-		titleLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
-		titleLabel.setForeground(new Color(33, 37, 41));
+		// Make window draggable
+		titleBar.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				mouseDownCompCoords = e.getPoint();
+			}
+		});
 		
-		panel.add(titleLabel);
+		titleBar.addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				Point currCoords = e.getLocationOnScreen();
+				setLocation(currCoords.x - mouseDownCompCoords.x, currCoords.y - mouseDownCompCoords.y);
+			}
+		});
 		
-		if (user != null) {
-			JLabel userLabel = new JLabel("Welcome, " + user.getUsername());
-			userLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-			userLabel.setForeground(new Color(52, 58, 64));
-			panel.add(userLabel);
-		}
+		// Title label
+		JLabel titleLabel = new JLabel("Degree Program Recommender");
+		titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		titleLabel.setForeground(Color.WHITE);
+		
+		// Window control buttons
+		JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+		controlPanel.setOpaque(false);
+		
+		JButton minimizeBtn = createWindowButton("-");
+		JButton closeBtn = createWindowButton("×");
+		
+		minimizeBtn.addActionListener(e -> setState(JFrame.ICONIFIED));
+		closeBtn.addActionListener(e -> System.exit(0));
+		
+		closeBtn.setBackground(new Color(220, 53, 69));
+		
+		controlPanel.add(minimizeBtn);
+		controlPanel.add(closeBtn);
+		
+		titleBar.add(titleLabel, BorderLayout.WEST);
+		titleBar.add(controlPanel, BorderLayout.EAST);
+		
+		return titleBar;
+	}
+	
+	private JButton createWindowButton(String text) {
+		JButton btn = new JButton(text);
+		btn.setPreferredSize(new Dimension(45, 40));
+		btn.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+		btn.setForeground(Color.WHITE);
+		btn.setBackground(new Color(88, 86, 214));
+		btn.setBorderPainted(false);
+		btn.setFocusPainted(false);
+		btn.setContentAreaFilled(true);
+		btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		btn.setMargin(new Insets(0, 0, 0, 0));
+		
+		btn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				if (text.equals("\u00D7")) {
+					btn.setBackground(new Color(200, 35, 51));
+				} else {
+					btn.setBackground(new Color(108, 106, 224));
+				}
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				if (text.equals("\u00D7")) {
+					btn.setBackground(new Color(220, 53, 69));
+				} else {
+					btn.setBackground(new Color(88, 86, 214));
+				}
+			}
+		});
+		
+		return btn;
+	}
+
+	private JPanel createWelcomePanel() {
+		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+		panel.setBackground(new Color(250, 251, 252));
+		
+		JLabel welcomeLabel = new JLabel(String.format("Welcome back, %s!", user.getUsername()));
+		welcomeLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+		welcomeLabel.setForeground(new Color(52, 58, 64));
+		
+		panel.add(welcomeLabel);
 		return panel;
 	}
 
 	private JPanel createInputPanel() {
 		JPanel container = new JPanel(new BorderLayout());
-		container.setPreferredSize(new Dimension(320, 0));
+		container.setPreferredSize(new Dimension(340, 0));
 		container.setBackground(Color.WHITE);
 		container.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(new Color(220, 220, 220)),
-			BorderFactory.createEmptyBorder(20, 20, 20, 20)
+			BorderFactory.createLineBorder(new Color(222, 226, 230), 2, true),
+			BorderFactory.createEmptyBorder(15, 20, 15, 20)
 		));
 
 		JPanel inputPanel = new JPanel(new GridBagLayout());
 		inputPanel.setBackground(Color.WHITE);
 		GridBagConstraints c = new GridBagConstraints();
 		c.fill = GridBagConstraints.HORIZONTAL;
-		c.insets = new Insets(8, 5, 8, 5);
+		c.insets = new Insets(3, 5, 3, 5);
 
-		// Header
+		// Icon and header using styled star symbol
 		c.gridx = 0;
 		c.gridy = 0;
 		c.gridwidth = 2;
+		JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+		headerPanel.setBackground(Color.WHITE);
+		
+		JLabel iconLabel = new JLabel("🎯");
+		iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
+		
+		headerPanel.add(iconLabel);
+		inputPanel.add(headerPanel, c);
+		
+		c.gridy++;
+		c.insets = new Insets(0, 5, 8, 5);
 		JLabel headerLabel = new JLabel("Your Preferences");
-		headerLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+		headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+		headerLabel.setForeground(new Color(88, 86, 214));
+		headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		inputPanel.add(headerLabel, c);
 
 		c.gridwidth = 1;
 		c.gridy++;
+		c.insets = new Insets(5, 5, 2, 5);
 
-		// Salary field
+		// Salary field with dollar symbol
 		addInputRow(inputPanel, c, "Minimum Salary (SAR):", salaryField, 
 				"Enter your desired minimum salary");
 		salaryField.setText("5000");
-		salaryField.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		salaryField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		salaryField.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
+			BorderFactory.createEmptyBorder(4, 8, 4, 8)
+		));
 
-		// GPA spinner
+		// GPA spinner with bar chart symbol
 		c.gridy++;
+		c.insets = new Insets(5, 5, 2, 5);
 		addInputRow(inputPanel, c, "Previous GPA:", gpaSpinner, 
 				"Your current or previous GPA");
-		gpaSpinner.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		gpaSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 		((JSpinner.DefaultEditor) gpaSpinner.getEditor()).getTextField().setHorizontalAlignment(JTextField.CENTER);
+		((JSpinner.DefaultEditor) gpaSpinner.getEditor()).getTextField().setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		((JSpinner.DefaultEditor) gpaSpinner.getEditor()).getTextField().setBorder(
+			BorderFactory.createEmptyBorder(4, 8, 4, 8)
+		);
 
-		// Interest combo
+		// Interest combo with circle symbol
 		c.gridy++;
+		c.insets = new Insets(5, 5, 2, 5);
 		addInputRow(inputPanel, c, "Analytical Interest:", interestCombo, 
 				"How much do you enjoy analytical work?");
 		interestCombo.setSelectedIndex(1);
-		interestCombo.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		interestCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		interestCombo.setBackground(Color.WHITE);
+		interestCombo.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
+			BorderFactory.createEmptyBorder(2, 4, 2, 4)
+		));
 
 		// Button panel
 		c.gridy++;
 		c.gridx = 0;
 		c.gridwidth = 2;
-		c.insets = new Insets(20, 5, 8, 5);
+		c.insets = new Insets(12, 5, 5, 5);
 		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
 		buttonPanel.setBackground(Color.WHITE);
 		
-		recommendBtn.setPreferredSize(new Dimension(130, 35));
-		recommendBtn.setBackground(new Color(0, 123, 255));
+		recommendBtn.setPreferredSize(new Dimension(140, 42));
+		recommendBtn.setBackground(new Color(88, 86, 214));
 		recommendBtn.setForeground(Color.WHITE);
 		recommendBtn.setFocusPainted(false);
-		recommendBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+		recommendBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
 		recommendBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		recommendBtn.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(new Color(0, 123, 255), 1, true),
-			BorderFactory.createEmptyBorder(5, 15, 5, 15)
-		));
+		recommendBtn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+		recommendBtn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				recommendBtn.setBackground(new Color(108, 106, 224));
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				recommendBtn.setBackground(new Color(88, 86, 214));
+			}
+		});
 		
-		clearBtn.setPreferredSize(new Dimension(100, 35));
-		clearBtn.setBackground(new Color(108, 117, 125));
-		clearBtn.setForeground(Color.WHITE);
+		clearBtn.setPreferredSize(new Dimension(110, 42));
+		clearBtn.setBackground(new Color(233, 236, 239));
+		clearBtn.setForeground(new Color(73, 80, 87));
 		clearBtn.setFocusPainted(false);
-		clearBtn.setFont(new Font("SansSerif", Font.PLAIN, 13));
+		clearBtn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 		clearBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		clearBtn.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(new Color(108, 117, 125), 1, true),
-			BorderFactory.createEmptyBorder(5, 15, 5, 15)
-		));
+		clearBtn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+		clearBtn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				clearBtn.setBackground(new Color(222, 226, 230));
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				clearBtn.setBackground(new Color(233, 236, 239));
+			}
+		});
 		
 		buttonPanel.add(recommendBtn);
 		buttonPanel.add(clearBtn);
 		inputPanel.add(buttonPanel, c);
 
-		// Info note
+		// Info note with lightbulb symbol
 		c.gridy++;
-		c.insets = new Insets(20, 5, 5, 5);
-		JLabel noteLabel = new JLabel("<html><div style='text-align: center; font-size: 8px; color: #6c757d;'>"
-				+ "<b>Note:</b> Extra study hours = max(0, Required GPA - Your GPA)"
+		c.insets = new Insets(8, 8, 3, 8);
+		JLabel noteLabel = new JLabel("<html><div style='text-align: center; font-size: 9px; color: #868e96;'>"
+				+ "<b>Tip:</b> Extra study hours = max(0, Required GPA - Your GPA)"
 				+ "</div></html>");
 		noteLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		inputPanel.add(noteLabel, c);
@@ -215,35 +357,48 @@ public class MainFrame extends JFrame {
 		c.gridx = 0;
 		c.weightx = 0;
 		c.anchor = GridBagConstraints.WEST;
+		c.gridwidth = 2;
 		JLabel label = new JLabel(labelText);
-		label.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 		label.setForeground(new Color(73, 80, 87));
 		panel.add(label, c);
 
-		c.gridx = 1;
+		c.gridy++;
+		c.gridx = 0;
 		c.weightx = 1;
 		((JComponent) component).setToolTipText(tooltip);
 		panel.add(component, c);
+		c.gridy++;
 	}
 
+
 	private JPanel createResultsPanel() {
-		JPanel panel = new JPanel(new BorderLayout());
-		panel.setBackground(new Color(245, 245, 245));
+		JPanel panel = new JPanel(new BorderLayout(0, 10));
+		panel.setBackground(new Color(250, 251, 252));
+		
+		JLabel resultsLabel = new JLabel("Recommended Programs");
+		resultsLabel.setFont(new Font("Segoe UI Semibold", Font.BOLD, 14));
+		resultsLabel.setForeground(new Color(52, 58, 64));
+		resultsLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+		panel.add(resultsLabel, BorderLayout.NORTH);
 		
 		// Configure table
-		resultTable.setFont(new Font("SansSerif", Font.PLAIN, 12));
-		resultTable.setRowHeight(28);
+		resultTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+		resultTable.setRowHeight(32);
 		resultTable.setShowGrid(true);
-		resultTable.setGridColor(new Color(230, 230, 230));
-		resultTable.setSelectionBackground(new Color(184, 218, 255));
+		resultTable.setGridColor(new Color(233, 236, 239));
+		resultTable.setSelectionBackground(new Color(232, 232, 255));
+		resultTable.setSelectionForeground(new Color(33, 37, 41));
 		resultTable.setFillsViewportHeight(true);
+		resultTable.setBackground(Color.WHITE);
 		
 		// Header styling
 		JTableHeader header = resultTable.getTableHeader();
-		header.setFont(new Font("SansSerif", Font.BOLD, 12));
+		header.setFont(new Font("Segoe UI Semibold", Font.BOLD, 11));
 		header.setBackground(new Color(248, 249, 250));
-		header.setForeground(new Color(33, 37, 41));
-		header.setPreferredSize(new Dimension(header.getPreferredSize().width, 35));
+		header.setForeground(new Color(73, 80, 87));
+		header.setPreferredSize(new Dimension(header.getPreferredSize().width, 38));
+		header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(222, 226, 230)));
 		
 		// Center align numeric columns
 		DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -253,7 +408,11 @@ public class MainFrame extends JFrame {
 		}
 		
 		JScrollPane scrollPane = new JScrollPane(resultTable);
-		scrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
+		scrollPane.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(new Color(222, 226, 230), 2, true),
+			BorderFactory.createEmptyBorder(0, 0, 0, 0)
+		));
+		scrollPane.getViewport().setBackground(Color.WHITE);
 		
 		panel.add(scrollPane, BorderLayout.CENTER);
 		
@@ -261,14 +420,11 @@ public class MainFrame extends JFrame {
 	}
 
 	private JPanel createStatusPanel() {
-		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 8));
 		panel.setBackground(new Color(248, 249, 250));
-		panel.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 220, 220)),
-			BorderFactory.createEmptyBorder(5, 10, 5, 10)
-		));
+		panel.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(222, 226, 230)));
 		
-		statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+		statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 		statusLabel.setForeground(new Color(108, 117, 125));
 		panel.add(statusLabel);
 		
