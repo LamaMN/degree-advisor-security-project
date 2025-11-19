@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import model.Program;
+import model.ProgramFactory;
 
 // Handles initialization n access to the embedded SQLite database
 
@@ -31,45 +32,25 @@ public final class DatabaseManager {
 			{ "Operations", "Operations & Supply Chain programs" } };
 
 	private static final Program[] DEFAULT_PROGRAMS = {
-<<<<<<< HEAD
 			new Program("Finance - Financial Analyst", "Finance", 5000, 3.0,
 					Program.InterestLevel.LOW, 3.5),
 			new Program("Finance - Corporate Finance", "Finance", 5500, 3.0,
 					Program.InterestLevel.LOW, 3.5),
 			new Program("Marketing - Digital Marketing", "Marketing", 7000, 3.5,
 					Program.InterestLevel.VERY_HIGH, 4.0),
-			new Program("Marketing - Brand Management", "Marketing", 7200, 3.5,
+			ProgramFactory.create("Marketing - Brand Management", "Marketing", 7200, 3.5,
 					Program.InterestLevel.VERY_HIGH, 4.0),
-			new Program("Accounting - Audit & Assurance", "Accounting", 5000, 3.0,
+			ProgramFactory.create("Accounting - Audit & Assurance", "Accounting", 5000, 3.0,
 					Program.InterestLevel.HIGH, 3.5),
 			new Program("Accounting - Management Accounting", "Accounting", 5200, 3.0,
-=======
-			ProgramFactory.create("Finance - Financial Analyst", "FN", 5000, 3.0,
-					Program.InterestLevel.LOW, 3.5),
-			ProgramFactory.create("Finance - Corporate Finance", "FN", 5500, 3.0,
-					Program.InterestLevel.LOW, 3.5),
-			ProgramFactory.create("Marketing - Digital Marketing", "MK", 7000, 3.5,
-					Program.InterestLevel.VERY_HIGH, 4.0),
-			ProgramFactory.create("Marketing - Brand Management", "MK", 7200, 3.5,
-					Program.InterestLevel.VERY_HIGH, 4.0),
-			ProgramFactory.create("Accounting - Audit & Assurance", "AC", 5000, 3.0,
-					Program.InterestLevel.HIGH, 3.5),
-			ProgramFactory.create("Accounting - Management Accounting", "AC", 5200, 3.0,
->>>>>>> 4fccca6f682d349f44175086621cbadca5eb8c32
 					Program.InterestLevel.HIGH, 3.5),
 			new Program("HRM - HR Specialist", "HRM", 5000, 3.0,
 					Program.InterestLevel.HIGH, 3.5),
 			new Program("HRM - Organizational Development", "HRM", 5400, 3.0,
 					Program.InterestLevel.HIGH, 3.5),
-<<<<<<< HEAD
 			new Program("Operations - Operations Analyst", "Operations", 6000, 3.5,
 					Program.InterestLevel.MEDIUM, 3.5),
 			new Program("Operations - Supply Chain Management", "Operations", 6200, 3.5,
-=======
-			ProgramFactory.create("Operations - Operations Analyst", "OM", 6000, 3.5,
-					Program.InterestLevel.MEDIUM, 3.5),
-			ProgramFactory.create("Operations - Supply Chain Management", "OM", 6200, 3.5,
->>>>>>> 4fccca6f682d349f44175086621cbadca5eb8c32
 					Program.InterestLevel.MEDIUM, 3.5) };
 
 	static {
