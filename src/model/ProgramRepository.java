@@ -1,42 +1,204 @@
 package model;
 
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import security.DatabaseManager;
+import security.User;
 
 public class ProgramRepository {
- private static ProgramRepository instance;
- private final List<Program> programs = new ArrayList<>();
+	private static final ProgramRepository INSTANCE = new ProgramRepository();
 
- private ProgramRepository(){
-     loadDefaults();
- }
+	private ProgramRepository() {
+	}
 
- public static synchronized ProgramRepository getInstance(){
-     if(instance == null) instance = new ProgramRepository();
-     return instance;
- }
+	public static ProgramRepository getInstance() {
+		return INSTANCE;
+	}
 
- private void loadDefaults(){
-     // The spec requires using all categories and one or more programs each.
-     // Using the canonical five categories from the spec (names are examples).
-     programs.add(ProgramFactory.create("Finance - Financial Analyst", Program.Category.FN, 5000, 3.0, Program.InterestLevel.LOW, 3.5));
-     programs.add(ProgramFactory.create("Finance - Corporate Finance", Program.Category.FN, 5500, 3.0, Program.InterestLevel.LOW, 3.5));
+	public List<Program> getPrograms() {
+		List<Program> programs = new ArrayList<>();
+		String sql = """
+				SELECT p.id, p.name, c.name AS category, p.min_salary, p.min_previous_gpa,
+				       p.interest_level, p.post_degree_gpa
+				FROM programs p
+				JOIN categories c ON p.category_id = c.id
+				ORDER BY p.name ASC
+				""";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
+			while (rs.next()) {
+				programs.add(mapProgram(rs));
+			}
+		} catch (SQLException ex) {
+			throw new IllegalStateException("Unable to load programs", ex);
+		}
+		return Collections.unmodifiableList(programs);
+	}
 
-     programs.add(ProgramFactory.create("Marketing - Digital Marketing", Program.Category.MK, 7000, 3.5, Program.InterestLevel.VERY_HIGH, 4.0));
-     programs.add(ProgramFactory.create("Marketing - Brand Management", Program.Category.MK, 7200, 3.5, Program.InterestLevel.VERY_HIGH, 4.0));
+	public List<ProgramCategory> getCategories() {
+		List<ProgramCategory> categories = new ArrayList<>();
+		String sql = "SELECT id, name, description FROM categories ORDER BY name ASC";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
+			while (rs.next()) {
+				categories.add(mapCategory(rs));
+			}
+		} catch (SQLException ex) {
+			throw new IllegalStateException("Unable to load categories", ex);
+		}
+		return Collections.unmodifiableList(categories);
+	}
 
-     programs.add(ProgramFactory.create("Accounting - Audit & Assurance", Program.Category.AC, 5000, 3.0, Program.InterestLevel.HIGH, 3.5));
-     programs.add(ProgramFactory.create("Accounting - Management Accounting", Program.Category.AC, 5200, 3.0, Program.InterestLevel.HIGH, 3.5));
+	public ProgramCategory addCategory(User actor, String name, String description) throws SQLException {
+		requireAdmin(actor);
+		String sql = "INSERT INTO categories(name, description) VALUES (?, ?)";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			stmt.setString(1, name.trim());
+			stmt.setString(2, description == null ? null : description.trim());
+			stmt.executeUpdate();
 
-     programs.add(ProgramFactory.create("HRM - HR Specialist", Program.Category.HRM, 5000, 3.0, Program.InterestLevel.HIGH, 3.5));
-     programs.add(ProgramFactory.create("HRM - Organizational Development", Program.Category.HRM, 5400, 3.0, Program.InterestLevel.HIGH, 3.5));
+			try (ResultSet keys = stmt.getGeneratedKeys()) {
+				if (keys.next()) {
+					return new ProgramCategory(keys.getInt(1), name.trim(), description == null ? "" : description.trim());
+				}
+			}
+		}
+		throw new SQLException("Unable to create category");
+	}
 
-     programs.add(ProgramFactory.create("Operations - Operations Analyst", Program.Category.OM, 6000, 3.5, Program.InterestLevel.MEDIUM, 3.5));
-     programs.add(ProgramFactory.create("Operations - Supply Chain Management", Program.Category.OM, 6200, 3.5, Program.InterestLevel.MEDIUM, 3.5));
- }
+	public void deleteCategory(User actor, int categoryId) throws SQLException {
+		requireAdmin(actor);
+		String sql = "DELETE FROM categories WHERE id = ?";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setInt(1, categoryId);
+			stmt.executeUpdate();
+		}
+	}
 
- public List<Program> getPrograms(){ return Collections.unmodifiableList(programs); }
+	public ProgramCategory findCategoryByName(String name) throws SQLException {
+		String sql = "SELECT id, name, description FROM categories WHERE lower(name) = lower(?)";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setString(1, name.trim());
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return mapCategory(rs);
+				}
+			}
+		}
+		return null;
+	}
 
- 
- public void addProgram(Program p){ programs.add(p); }
+	public Program addProgram(User actor, String name, int categoryId, double minSalary, double minPrevGpa,
+			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
+		requireAdmin(actor);
+		String sql = """
+				INSERT INTO programs(name, category_id, min_salary, min_previous_gpa, interest_level, post_degree_gpa)
+				VALUES (?, ?, ?, ?, ?, ?)
+				""";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			stmt.setString(1, name.trim());
+			stmt.setInt(2, categoryId);
+			stmt.setDouble(3, minSalary);
+			stmt.setDouble(4, minPrevGpa);
+			stmt.setString(5, interest.name());
+			stmt.setDouble(6, postDegreeGpa);
+			stmt.executeUpdate();
+
+			try (ResultSet keys = stmt.getGeneratedKeys()) {
+				if (keys.next()) {
+					return fetchProgramById(connection, keys.getInt(1));
+				}
+			}
+		}
+		throw new SQLException("Unable to create program");
+	}
+
+	public void deleteProgram(User actor, int programId) throws SQLException {
+		requireAdmin(actor);
+		String sql = "DELETE FROM programs WHERE id = ?";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setInt(1, programId);
+			stmt.executeUpdate();
+		}
+	}
+
+	public void updateProgram(User actor, int programId, String name, int categoryId, double minSalary, double minPrevGpa,
+			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
+		requireAdmin(actor);
+		String sql = """
+				UPDATE programs
+				SET name = ?, category_id = ?, min_salary = ?, min_previous_gpa = ?, interest_level = ?, post_degree_gpa = ?
+				WHERE id = ?
+				""";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setString(1, name.trim());
+			stmt.setInt(2, categoryId);
+			stmt.setDouble(3, minSalary);
+			stmt.setDouble(4, minPrevGpa);
+			stmt.setString(5, interest.name());
+			stmt.setDouble(6, postDegreeGpa);
+			stmt.setInt(7, programId);
+			stmt.executeUpdate();
+		}
+	}
+
+	private Program fetchProgramById(Connection connection, int programId) throws SQLException {
+		String sql = """
+				SELECT p.id, p.name, c.name AS category, p.min_salary, p.min_previous_gpa,
+				       p.interest_level, p.post_degree_gpa
+				FROM programs p
+				JOIN categories c ON p.category_id = c.id
+				WHERE p.id = ?
+				""";
+		try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setInt(1, programId);
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return mapProgram(rs);
+				}
+			}
+		}
+		throw new SQLException("Program not found after insert");
+	}
+
+	private Program mapProgram(ResultSet rs) throws SQLException {
+		int id = rs.getInt("id");
+		String name = rs.getString("name");
+		String category = rs.getString("category");
+		double minSalary = rs.getDouble("min_salary");
+		double minPrevGpa = rs.getDouble("min_previous_gpa");
+		String interest = rs.getString("interest_level");
+		double postDegree = rs.getDouble("post_degree_gpa");
+		return new Program(id, name, category, minSalary, minPrevGpa,
+				Program.InterestLevel.valueOf(interest.toUpperCase()), postDegree);
+	}
+
+	private ProgramCategory mapCategory(ResultSet rs) throws SQLException {
+		return new ProgramCategory(rs.getInt("id"), rs.getString("name"), rs.getString("description"));
+	}
+
+	private static void requireAdmin(User actor) {
+		if (actor == null) {
+			throw new SecurityException("User context is required for privileged operations.");
+		}
+		if (!actor.isAdmin()) {
+			throw new SecurityException("Admin privileges are required for this operation.");
+		}
+	}
 }
 

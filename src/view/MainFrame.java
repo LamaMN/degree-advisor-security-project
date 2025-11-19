@@ -36,6 +36,7 @@ import javax.swing.table.JTableHeader;
 
 import controllers.RecommendationEngine;
 import model.Program;
+import model.ProgramRepository;
 import security.User;
 
 public class MainFrame extends JFrame {
@@ -57,15 +58,15 @@ public class MainFrame extends JFrame {
 	};
 	private final JTable resultTable = new JTable(tableModel);
 	private final JLabel statusLabel = new JLabel(" ");
-	private final RecommendationEngine engine;
+	private final ProgramRepository repository;
 	private final User user;
 
 	// For dragging window
 	private Point mouseDownCompCoords;
 
-	public MainFrame(RecommendationEngine engine, User user) {
+	public MainFrame(ProgramRepository repository, User user) {
 		super("  Degree Program Recommender");
-		this.engine = engine;
+		this.repository = repository;
 		this.user = user;
 
 		// Remove default window decorations
@@ -451,6 +452,7 @@ public class MainFrame extends JFrame {
 			String interest = (String) interestCombo.getSelectedItem();
 			Program.InterestLevel level = Program.InterestLevel.fromString(interest);
 
+			RecommendationEngine engine = new RecommendationEngine(repository.getPrograms());
 			RecommendationEngine.Input input = new RecommendationEngine.Input(salary, prevGpa, level);
 			List<RecommendationEngine.Recommendation> recs = engine.recommend(input);
 			refreshTable(recs);

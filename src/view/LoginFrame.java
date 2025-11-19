@@ -215,6 +215,7 @@ public class LoginFrame extends JFrame {
 		c.insets = new Insets(15, 5, 10, 5);
 		panel.add(loginButton, c);
 
+
 		// Add Enter key listener to both fields
 		loginUsernameField.addActionListener(e -> loginButton.doClick());
 		loginPasswordField.addActionListener(e -> loginButton.doClick());
@@ -251,6 +252,7 @@ public class LoginFrame extends JFrame {
 		c.insets = new Insets(12, 5, 10, 5);
 		panel.add(registerButton, c);
 
+		
 		// Add Enter key listener to both fields
 		registerUsernameField.addActionListener(e -> registerButton.doClick());
 		registerPasswordField.addActionListener(e -> registerButton.doClick());

@@ -22,16 +22,17 @@ public class AuthService {
 
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement statement = connection.prepareStatement(
-						"INSERT INTO users(username, password_hash, salt) VALUES (?, ?, ?)",
+						"INSERT INTO users(username, password_hash, salt, role) VALUES (?, ?, ?, ?)",
 						Statement.RETURN_GENERATED_KEYS)) {
 			statement.setString(1, normalizedUsername);
 			statement.setString(2, hash);
 			statement.setString(3, salt);
+			statement.setString(4, User.Role.STUDENT.name());
 			statement.executeUpdate();
 
 			try (ResultSet keys = statement.getGeneratedKeys()) {
 				if (keys.next()) {
-					return new User(keys.getInt(1), normalizedUsername);
+					return new User(keys.getInt(1), normalizedUsername, User.Role.STUDENT);
 				}
 			}
 		} catch (SQLException ex) {
@@ -52,7 +53,7 @@ public class AuthService {
 
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement statement = connection.prepareStatement(
-						"SELECT id, password_hash, salt FROM users WHERE username = ?")) {
+						"SELECT id, username, password_hash, salt, role FROM users WHERE username = ?")) {
 			statement.setString(1, normalizedUsername);
 			try (ResultSet resultSet = statement.executeQuery()) {
 				if (resultSet.next()) {
@@ -60,7 +61,7 @@ public class AuthService {
 					String salt = resultSet.getString("salt");
 					boolean matches = PasswordHasher.matches(password, salt, storedHash);
 					if (matches) {
-						return Optional.of(new User(resultSet.getInt("id"), normalizedUsername));
+						return Optional.of(mapUser(resultSet));
 					}
 				}
 			}
@@ -84,6 +85,14 @@ public class AuthService {
 
 	private static String normalize(String username) {
 		return username == null ? "" : username.trim();
+	}
+
+	private static User mapUser(ResultSet resultSet) throws SQLException {
+		int id = resultSet.getInt("id");
+		String username = resultSet.getString("username");
+		String roleValue = resultSet.getString("role");
+		User.Role role = User.Role.valueOf(roleValue == null ? "STUDENT" : roleValue.toUpperCase());
+		return new User(id, username, role);
 	}
 
 	private static boolean isUniqueConstraintViolation(SQLException ex) {
