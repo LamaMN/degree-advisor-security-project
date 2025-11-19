@@ -448,7 +448,13 @@ public class MainFrame extends JFrame {
 	private void onRecommend() {
 		try {
 			double salary = Double.parseDouble(salaryField.getText().trim());
+			if (salary <= 0) {
+				throw new IllegalArgumentException("Salary must be greater than zero.");
+			}
 			double prevGpa = ((Double) ((SpinnerNumberModel) gpaSpinner.getModel()).getNumber()).doubleValue();
+			if (prevGpa < 0.0 || prevGpa > 4.0) {
+				throw new IllegalArgumentException("GPA must be between 0.0 and 4.0.");
+			}
 			String interest = (String) interestCombo.getSelectedItem();
 			Program.InterestLevel level = Program.InterestLevel.fromString(interest);
 
@@ -472,6 +478,12 @@ public class MainFrame extends JFrame {
 			statusLabel.setForeground(new Color(220, 53, 69));
 			JOptionPane.showMessageDialog(this,
 					"Please enter a valid numeric salary value (e.g., 5000).",
+					"Input Error", JOptionPane.ERROR_MESSAGE);
+		} catch (IllegalArgumentException ex) {
+			statusLabel.setText("Error: " + ex.getMessage());
+			statusLabel.setForeground(new Color(220, 53, 69));
+			JOptionPane.showMessageDialog(this,
+					ex.getMessage(),
 					"Input Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}

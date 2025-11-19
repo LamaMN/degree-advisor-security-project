@@ -15,6 +15,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -27,12 +28,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 import security.AuthService;
 import security.User;
+import validation.Validator;
 
 /**
  * Simple login + registration frame shown before accessing the main UI.
@@ -43,11 +46,11 @@ public class LoginFrame extends JFrame {
 
 	private final JTextField loginUsernameField = new JTextField(18);
 	private final JPasswordField loginPasswordField = new JPasswordField(18);
-	private final JLabel loginStatusLabel = createStatusLabel();
+	private final JTextArea loginStatusArea = createStatusArea(Color.RED);
 
 	private final JTextField registerUsernameField = new JTextField(18);
 	private final JPasswordField registerPasswordField = new JPasswordField(18);
-	private final JLabel registerStatusLabel = createStatusLabel();
+	private final JTextArea registerStatusArea = createStatusArea(Color.RED);
 
 	// For dragging window
 	private Point mouseDownCompCoords;
@@ -60,7 +63,7 @@ public class LoginFrame extends JFrame {
 		// Remove default window decorations
 		setUndecorated(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(480, 440);
+		setSize(480, 450);
 		setLocationRelativeTo(null);
 
 		initUI();
@@ -215,23 +218,24 @@ public class LoginFrame extends JFrame {
 		c.insets = new Insets(15, 5, 10, 5);
 		panel.add(loginButton, c);
 
-
 		// Add Enter key listener to both fields
 		loginUsernameField.addActionListener(e -> loginButton.doClick());
 		loginPasswordField.addActionListener(e -> loginButton.doClick());
 
 		c.gridy++;
 		c.insets = new Insets(5, 5, 5, 5);
-		panel.add(loginStatusLabel, c);
+		panel.add(loginStatusArea, c);
 
 		return panel;
 	}
 
 	private JPanel createRegisterPanel() {
 		JPanel panel = new JPanel(new GridBagLayout());
-		panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+		panel.setBorder(BorderFactory.createEmptyBorder(10, 15, 15, 15));
 		panel.setBackground(Color.WHITE);
 		GridBagConstraints c = defaultConstraints();
+		registerUsernameField.setPreferredSize(loginUsernameField.getPreferredSize());
+		registerPasswordField.setPreferredSize(loginPasswordField.getPreferredSize());
 
 		addLabeledField(panel, c, "Username", registerUsernameField);
 		addLabeledField(panel, c, "Password", registerPasswordField);
@@ -242,7 +246,7 @@ public class LoginFrame extends JFrame {
 		c.gridy++;
 		c.gridx = 0;
 		c.gridwidth = 2;
-		c.insets = new Insets(2, 5, 5, 5);
+		c.insets = new Insets(0, 5, 0, 5);
 		panel.add(hint, c);
 
 		JButton registerButton = new JButton("Create Account");
@@ -252,39 +256,42 @@ public class LoginFrame extends JFrame {
 		c.insets = new Insets(12, 5, 10, 5);
 		panel.add(registerButton, c);
 
-		
 		// Add Enter key listener to both fields
 		registerUsernameField.addActionListener(e -> registerButton.doClick());
 		registerPasswordField.addActionListener(e -> registerButton.doClick());
 
 		c.gridy++;
 		c.insets = new Insets(5, 5, 5, 5);
-		panel.add(registerStatusLabel, c);
+		panel.add(registerStatusArea, c);
 
 		return panel;
 	}
 
 	private void handleLogin() {
-		loginStatusLabel.setText(" ");
+		loginStatusArea.setText(" ");
 		String username = loginUsernameField.getText().trim();
 		char[] password = loginPasswordField.getPassword();
 
-		if (username.isEmpty() || password.length == 0) {
-			setStatus(loginStatusLabel, "Please provide username and password.", Color.RED);
+		// Use Validator
+		List<String> errors = Validator.validateCredentials(username, password);
+		if (!errors.isEmpty()) {
+			String errorMessage = String.join("\n", errors);
+			setStatus(loginStatusArea, errorMessage, Color.RED);
 			Arrays.fill(password, '\0');
+			loginPasswordField.setText("");
 			return;
 		}
 
 		try {
 			Optional<User> user = authService.authenticate(username, password);
 			if (user.isPresent()) {
-				setStatus(loginStatusLabel, "Login successful. Loading dashboard…", new Color(40, 167, 69));
+				setStatus(loginStatusArea, "Login successful. Loading dashboard…", new Color(40, 167, 69));
 				SwingUtilities.invokeLater(() -> {
 					dispose();
 					onAuthenticated.accept(user.get());
 				});
 			} else {
-				setStatus(loginStatusLabel, "Invalid username or password.", Color.RED);
+				setStatus(loginStatusArea, "Invalid username or password.", Color.RED);
 			}
 		} catch (SQLException ex) {
 			showError("Unable to sign in", ex);
@@ -297,17 +304,27 @@ public class LoginFrame extends JFrame {
 	}
 
 	private void handleRegistration() {
-		registerStatusLabel.setText(" ");
+		registerStatusArea.setText(" ");
 		String username = registerUsernameField.getText().trim();
 		char[] password = registerPasswordField.getPassword();
 
+		// Use Validator
+		List<String> errors = Validator.validateCredentials(username, password);
+		if (!errors.isEmpty()) {
+			String errorMessage = String.join("\n", errors);
+			setStatus(registerStatusArea, errorMessage, Color.RED);
+			Arrays.fill(password, '\0');
+			registerPasswordField.setText("");
+			return;
+		}
+
 		try {
 			User user = authService.register(username, password);
-			setStatus(registerStatusLabel,
+			setStatus(registerStatusArea,
 					"Account created! Switch to Sign In tab, " + user.getUsername() + ".", new Color(40, 167, 69));
 			registerPasswordField.setText("");
 		} catch (IllegalArgumentException ex) {
-			setStatus(registerStatusLabel, ex.getMessage(), Color.RED);
+			setStatus(registerStatusArea, ex.getMessage(), Color.RED);
 		} catch (SQLException ex) {
 			showError("Unable to register user", ex);
 		} catch (IllegalStateException ex) {
@@ -346,15 +363,21 @@ public class LoginFrame extends JFrame {
 		return c;
 	}
 
-	private static JLabel createStatusLabel() {
-		JLabel label = new JLabel(" ", SwingConstants.CENTER);
-		label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-		return label;
+	private static JTextArea createStatusArea(Color textColor) {
+		JTextArea area = new JTextArea(2, 20); // start with 2 rows
+		area.setEditable(false);
+		area.setLineWrap(true);
+		area.setWrapStyleWord(true);
+		area.setOpaque(false); // blend with panel background
+		area.setForeground(textColor);
+		area.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+		area.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+		return area;
 	}
 
-	private static void setStatus(JLabel label, String message, Color color) {
-		label.setText(message);
-		label.setForeground(color);
+	private static void setStatus(JTextArea area, String message, Color color) {
+		area.setText(message);
+		area.setForeground(color);
 	}
 
 	private void styleButton(JButton button) {
@@ -364,7 +387,7 @@ public class LoginFrame extends JFrame {
 		button.setFocusPainted(false);
 		button.setFont(new Font("Segoe UI", Font.BOLD, 14));
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		button.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20));
+		button.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
 
 		button.addMouseListener(new MouseAdapter() {
 			@Override
