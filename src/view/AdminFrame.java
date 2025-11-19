@@ -42,7 +42,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 
 import controllers.ProgramAdminService;
 import java.util.Objects;
@@ -62,7 +61,8 @@ public class AdminFrame extends JFrame {
 	private final User adminUser;
 
 	private final DefaultTableModel programTableModel = new DefaultTableModel(
-			new String[] { "Program", "Category", "Min Salary", "Min Required GPA", "Interest", "Post-Degree GPA" }, 0) {
+			new String[] { "Program", "Category", "Min Salary", "Min Required GPA", "Interest", "Post-Degree GPA" },
+			0) {
 		@Override
 		public boolean isCellEditable(int row, int column) {
 			return false;
@@ -74,7 +74,8 @@ public class AdminFrame extends JFrame {
 	private final JComboBox<Object> programCategoryCombo = new JComboBox<>();
 	private final JTextField programSalaryField = new JTextField(8);
 	private final JSpinner programMinGpaSpinner = new JSpinner(new SpinnerNumberModel(3.0, 0.0, 4.0, 0.1));
-	private final JComboBox<Program.InterestLevel> programInterestCombo = new JComboBox<>(Program.InterestLevel.values());
+	private final JComboBox<Program.InterestLevel> programInterestCombo = new JComboBox<>(
+			Program.InterestLevel.values());
 	private final JSpinner programPostGpaSpinner = new JSpinner(new SpinnerNumberModel(3.5, 0.0, 4.0, 0.1));
 
 	private final JButton addProgramBtn = new JButton("Add");
@@ -115,7 +116,7 @@ public class AdminFrame extends JFrame {
 	private JPanel createContentArea() {
 		JPanel container = new JPanel(new BorderLayout(20, 15));
 		container.setBackground(BACKGROUND);
-		container.setBorder(BorderFactory.createEmptyBorder(20, 25, 25, 25));
+		container.setBorder(BorderFactory.createEmptyBorder(20, 25, 15, 25)); // Reduced bottom padding from 25 to 15
 
 		container.add(createHeroPanel(), BorderLayout.NORTH);
 
@@ -225,8 +226,20 @@ public class AdminFrame extends JFrame {
 		c.gridx = 0;
 		c.gridy = row++;
 		c.gridwidth = 2;
-		c.insets = new Insets(0, 0, 15, 0);
+		c.insets = new Insets(0, 0, 10, 0);
 		card.add(heading, c);
+
+		programNameField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		programNameField.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
+				BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+
+
+		programCategoryCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		programCategoryCombo.setBackground(Color.WHITE);
+		programCategoryCombo.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
+				BorderFactory.createEmptyBorder(2, 4, 2, 4)));
 
 		addFormRow(card, c, row++, "Program Name", programNameField);
 		addFormRow(card, c, row, "Category", programCategoryCombo);
@@ -240,6 +253,34 @@ public class AdminFrame extends JFrame {
 		linkC.anchor = GridBagConstraints.EAST;
 		linkC.insets = new Insets(0, 0, 5, 0);
 		card.add(addCategoryBtn, linkC);
+
+		programSalaryField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		programSalaryField.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
+				BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+
+		programMinGpaSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		((JSpinner.DefaultEditor) programMinGpaSpinner.getEditor()).getTextField()
+				.setHorizontalAlignment(JTextField.CENTER);
+		((JSpinner.DefaultEditor) programMinGpaSpinner.getEditor()).getTextField()
+				.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		((JSpinner.DefaultEditor) programMinGpaSpinner.getEditor()).getTextField().setBorder(
+				BorderFactory.createEmptyBorder(4, 8, 4, 8));
+
+		programInterestCombo.setSelectedIndex(1);
+		programInterestCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		programInterestCombo.setBackground(Color.WHITE);
+		programInterestCombo.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
+				BorderFactory.createEmptyBorder(2, 4, 2, 4)));
+
+				programPostGpaSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		((JSpinner.DefaultEditor) programPostGpaSpinner.getEditor()).getTextField()
+				.setHorizontalAlignment(JTextField.CENTER);
+		((JSpinner.DefaultEditor) programPostGpaSpinner.getEditor()).getTextField()
+				.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		((JSpinner.DefaultEditor) programPostGpaSpinner.getEditor()).getTextField().setBorder(
+				BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
 		addFormRow(card, c, row++, "Min Salary (SAR)", programSalaryField);
 		addFormRow(card, c, row++, "Min Required GPA", programMinGpaSpinner);
@@ -274,15 +315,14 @@ public class AdminFrame extends JFrame {
 	}
 
 	private JPanel buildTableCard() {
-		JPanel card = createCardPanel(new BorderLayout());
+		JPanel card = new JPanel(new BorderLayout());
+		card.setBackground(Color.WHITE);
 		configureTable(programTable);
 		programTable.getSelectionModel().addListSelectionListener(new ProgramSelectionListener());
 
 		JScrollPane scrollPane = new JScrollPane(programTable);
 		scrollPane.getViewport().setBackground(Color.WHITE);
-		scrollPane.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createLineBorder(new Color(222, 226, 230), 2, true),
-				BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+		scrollPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
 		card.add(scrollPane, BorderLayout.CENTER);
 		return card;
@@ -692,35 +732,6 @@ public class AdminFrame extends JFrame {
 		return created;
 	}
 
-	private JLabel createGearIconLabel() {
-		int size = 70;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = image.createGraphics();
-		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		g2.setColor(new Color(90, 90, 90));
-
-		int cx = size / 2;
-		int cy = size / 2;
-		int outer = size / 2 - 4;
-		int tooth = 10;
-		for (int i = 0; i < 8; i++) {
-			double angle = Math.toRadians(i * 45);
-			int tx = cx + (int) ((outer - tooth) * Math.cos(angle)) - (tooth / 2);
-			int ty = cy + (int) ((outer - tooth) * Math.sin(angle)) - (tooth / 2);
-			g2.fillRoundRect(tx, ty, tooth, tooth, 4, 4);
-		}
-
-		int gearRadius = size / 3;
-		g2.fillOval(cx - gearRadius, cy - gearRadius, gearRadius * 2, gearRadius * 2);
-		g2.setColor(Color.WHITE);
-		g2.fillOval(cx - (gearRadius - 6), cy - (gearRadius - 6), (gearRadius - 6) * 2, (gearRadius - 6) * 2);
-
-		g2.dispose();
-		JLabel label = new JLabel(new javax.swing.ImageIcon(image));
-		label.setHorizontalAlignment(SwingConstants.CENTER);
-		return label;
-	}
-
 	private static final class RoundedPanel extends JPanel {
 		private final int arc;
 		private final Color borderColor;
@@ -770,5 +781,3 @@ public class AdminFrame extends JFrame {
 		}
 	}
 }
-
-

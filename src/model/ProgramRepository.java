@@ -60,6 +60,8 @@ public class ProgramRepository {
 
 	public ProgramCategory addCategory(User actor, String name, String description) throws SQLException {
 		requireAdmin(actor);
+
+		validation.Validator.validateCategory(name, description);
 		String sql = "INSERT INTO categories(name, description) VALUES (?, ?)";
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -69,7 +71,8 @@ public class ProgramRepository {
 
 			try (ResultSet keys = stmt.getGeneratedKeys()) {
 				if (keys.next()) {
-					return new ProgramCategory(keys.getInt(1), name.trim(), description == null ? "" : description.trim());
+					return new ProgramCategory(keys.getInt(1), name.trim(),
+							description == null ? "" : description.trim());
 				}
 			}
 		}
@@ -103,6 +106,8 @@ public class ProgramRepository {
 	public Program addProgram(User actor, String name, int categoryId, double minSalary, double minPrevGpa,
 			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
 		requireAdmin(actor);
+		validation.Validator.validateProgram(name, minSalary, minPrevGpa, postDegreeGpa);
+
 		String sql = """
 				INSERT INTO programs(name, category_id, min_salary, min_previous_gpa, interest_level, post_degree_gpa)
 				VALUES (?, ?, ?, ?, ?, ?)
@@ -122,8 +127,18 @@ public class ProgramRepository {
 					return fetchProgramById(connection, keys.getInt(1));
 				}
 			}
+		} catch (SQLException ex) {
+			if (isUniqueConstraintViolation(ex)) {
+				throw new IllegalArgumentException("Program already exists.", ex);
+			}
+			throw ex;
 		}
 		throw new SQLException("Unable to create program");
+	}
+
+	private static boolean isUniqueConstraintViolation(SQLException ex) {
+		// SQLite constraint violation code
+		return ex.getErrorCode() == 19 || "23000".equals(ex.getSQLState());
 	}
 
 	public void deleteProgram(User actor, int programId) throws SQLException {
@@ -136,9 +151,12 @@ public class ProgramRepository {
 		}
 	}
 
-	public void updateProgram(User actor, int programId, String name, int categoryId, double minSalary, double minPrevGpa,
+	public void updateProgram(User actor, int programId, String name, int categoryId, double minSalary,
+			double minPrevGpa,
 			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
 		requireAdmin(actor);
+		validation.Validator.validateProgram(name, minSalary, minPrevGpa, postDegreeGpa);
+
 		String sql = """
 				UPDATE programs
 				SET name = ?, category_id = ?, min_salary = ?, min_previous_gpa = ?, interest_level = ?, post_degree_gpa = ?
@@ -201,4 +219,3 @@ public class ProgramRepository {
 		}
 	}
 }
-

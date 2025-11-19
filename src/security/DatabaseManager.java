@@ -11,7 +11,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,8 +22,6 @@ public final class DatabaseManager {
 	private static final String DATA_DIRECTORY = "data";
 	private static final String DATABASE_FILE = "users.db";
 	private static final String JDBC_URL = "jdbc:sqlite:" + DATA_DIRECTORY + "/" + DATABASE_FILE;
-private static final String DEFAULT_ADMIN_USERNAME = "admin";
-private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123";
 
 	private static final String[][] DEFAULT_CATEGORIES = {
 			{ "Finance", "Finance & Financial Analysis programs" },
@@ -34,6 +31,7 @@ private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123";
 			{ "Operations", "Operations & Supply Chain programs" } };
 
 	private static final Program[] DEFAULT_PROGRAMS = {
+<<<<<<< HEAD
 			new Program("Finance - Financial Analyst", "Finance", 5000, 3.0,
 					Program.InterestLevel.LOW, 3.5),
 			new Program("Finance - Corporate Finance", "Finance", 5500, 3.0,
@@ -45,14 +43,33 @@ private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123";
 			new Program("Accounting - Audit & Assurance", "Accounting", 5000, 3.0,
 					Program.InterestLevel.HIGH, 3.5),
 			new Program("Accounting - Management Accounting", "Accounting", 5200, 3.0,
+=======
+			ProgramFactory.create("Finance - Financial Analyst", "FN", 5000, 3.0,
+					Program.InterestLevel.LOW, 3.5),
+			ProgramFactory.create("Finance - Corporate Finance", "FN", 5500, 3.0,
+					Program.InterestLevel.LOW, 3.5),
+			ProgramFactory.create("Marketing - Digital Marketing", "MK", 7000, 3.5,
+					Program.InterestLevel.VERY_HIGH, 4.0),
+			ProgramFactory.create("Marketing - Brand Management", "MK", 7200, 3.5,
+					Program.InterestLevel.VERY_HIGH, 4.0),
+			ProgramFactory.create("Accounting - Audit & Assurance", "AC", 5000, 3.0,
+					Program.InterestLevel.HIGH, 3.5),
+			ProgramFactory.create("Accounting - Management Accounting", "AC", 5200, 3.0,
+>>>>>>> 4fccca6f682d349f44175086621cbadca5eb8c32
 					Program.InterestLevel.HIGH, 3.5),
 			new Program("HRM - HR Specialist", "HRM", 5000, 3.0,
 					Program.InterestLevel.HIGH, 3.5),
 			new Program("HRM - Organizational Development", "HRM", 5400, 3.0,
 					Program.InterestLevel.HIGH, 3.5),
+<<<<<<< HEAD
 			new Program("Operations - Operations Analyst", "Operations", 6000, 3.5,
 					Program.InterestLevel.MEDIUM, 3.5),
 			new Program("Operations - Supply Chain Management", "Operations", 6200, 3.5,
+=======
+			ProgramFactory.create("Operations - Operations Analyst", "OM", 6000, 3.5,
+					Program.InterestLevel.MEDIUM, 3.5),
+			ProgramFactory.create("Operations - Supply Chain Management", "OM", 6200, 3.5,
+>>>>>>> 4fccca6f682d349f44175086621cbadca5eb8c32
 					Program.InterestLevel.MEDIUM, 3.5) };
 
 	static {
@@ -138,33 +155,8 @@ private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123";
 
 	private static void seedDefaults() throws SQLException {
 		try (Connection connection = getConnection()) {
-			seedAdminAccount(connection);
 			seedCategories(connection);
 			seedPrograms(connection);
-		}
-	}
-
-	private static void seedAdminAccount(Connection connection) throws SQLException {
-		try (PreparedStatement lookup = connection
-				.prepareStatement("SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1");
-				ResultSet rs = lookup.executeQuery()) {
-			if (rs.next()) {
-				return;
-			}
-		}
-
-		String salt = PasswordHasher.generateSalt();
-		char[] adminPassword = DEFAULT_ADMIN_PASSWORD.toCharArray();
-		String hash = PasswordHasher.hash(adminPassword, salt);
-		try (PreparedStatement insert = connection.prepareStatement(
-				"INSERT INTO users(username, password_hash, salt, role) VALUES (?, ?, ?, 'ADMIN')")) {
-			insert.setString(1, DEFAULT_ADMIN_USERNAME);
-			insert.setString(2, hash);
-			insert.setString(3, salt);
-			insert.executeUpdate();
-			System.out.println("Seeded default admin account (username: " + DEFAULT_ADMIN_USERNAME + ")");
-		} finally {
-			Arrays.fill(adminPassword, '\0');
 		}
 	}
 
@@ -239,4 +231,3 @@ private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123";
 		return connection;
 	}
 }
-
