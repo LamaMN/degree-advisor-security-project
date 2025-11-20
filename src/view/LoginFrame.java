@@ -273,7 +273,7 @@ public class LoginFrame extends JFrame {
 		char[] password = loginPasswordField.getPassword();
 
 		// Use Validator
-		List<String> errors = Validator.validateLoginCredentials(username, password);
+		String errors = Validator.validateLoginCredentials(username, password);
 		if (!errors.isEmpty()) {
 			String errorMessage = String.join("\n", errors);
 			setStatus(loginStatusArea, errorMessage, Color.RED);

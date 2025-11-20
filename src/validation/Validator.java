@@ -5,7 +5,6 @@ import java.util.List;
 import model.Program;
 import model.ProgramCategory;
 
-
 public class Validator {
 
     // Regex: allow only letters, digits, underscore, and dot for username
@@ -18,13 +17,10 @@ public class Validator {
     private static final String CATEGORY_REGEX = "^[A-Za-z]{2,}$";
 
     // Regex: allow only letters for category name
-    private static final String PROGRAM_REGEX = "^[A-Za-z](?:[A-Za-z\\- ]*[A-Za-z])?$" ;
-    
-    
-    private static final double MIN_GPA = 0.0;
-	private static final double MAX_GPA = 4.0;
+    private static final String PROGRAM_REGEX = "^[A-Za-z](?:[A-Za-z\\- ]*[A-Za-z])?$";
 
-    
+    private static final double MIN_GPA = 0.0;
+    private static final double MAX_GPA = 4.0;
 
     /**
      * Validates username and password.
@@ -57,18 +53,25 @@ public class Validator {
 
         return errors;
     }
-    public static List<String> validateLoginCredentials(String username, char[] password) {
-        List<String> errors = new ArrayList<>();
+
+    public static String validateLoginCredentials(String username, char[] password) {
+        
         String normalizedUsername = sanitize(username);
         String normalizedPassword = sanitize(String.valueOf(password));
 
         // If either field is empty, return one unified error
         if (normalizedUsername.isEmpty() || normalizedPassword.isEmpty()) {
-            errors.add("All fields must be filled.");
-            return errors;
+        return "All fields must be filled.";
         }
-
-        return errors;
+        else if (!normalizedUsername.matches(USERNAME_REGEX)) {
+            return ("Username contains invalid characters. Allowed: letters, digits, underscore, dot.");
+        }
+        else if (!(normalizedPassword).matches(PASSWORD_REGEX)) {
+            return ("Password contains invalid characters. Allowed: letters, digits, @#$%^&+=!");
+        }
+else {
+            return "";
+        }
     }
 
     /**
@@ -93,42 +96,40 @@ public class Validator {
      * Throws IllegalArgumentException if invalid.
      */
 
-    	public static void validateProgramInputs(String name, ProgramCategory category, double minSalary,
-			double minPrevGpa, double postDegreeGpa, Program.InterestLevel interest) {
-		if (sanitize(name).isEmpty()) {
-			throw new IllegalArgumentException("Program name is required.");
-		}
+    public static void validateProgramInputs(String name, ProgramCategory category, double minSalary,
+            double minPrevGpa, double postDegreeGpa, Program.InterestLevel interest) {
+        if (sanitize(name).isEmpty()) {
+            throw new IllegalArgumentException("Program name is required.");
+        }
         if (name.length() > 100) {
             throw new IllegalArgumentException("Program name too long (max 100 chars).");
         }
-        if(!name.matches(PROGRAM_REGEX)){
+        if (!name.matches(PROGRAM_REGEX)) {
             throw new IllegalArgumentException("Program name contains invalid characters.");
         }
-		if (category == null) {
-			throw new IllegalArgumentException("Category selection is required.");
-		}
-		if (interest == null) {
-			throw new IllegalArgumentException("Interest level is required.");
-		}
-		if (minSalary < 1200 || minSalary > 1_000_000) {
+        if (category == null) {
+            throw new IllegalArgumentException("Category selection is required.");
+        }
+        if (interest == null) {
+            throw new IllegalArgumentException("Interest level is required.");
+        }
+        if (minSalary < 1200 || minSalary > 1_000_000) {
             throw new IllegalArgumentException("Salary must be between 1200 and 1,000,000.");
         }
-		if (!isGpaInRange(minPrevGpa)) {
-			throw new IllegalArgumentException("Previous GPA must be between 0.0 and 4.0.");
-		}
-		if (!isGpaInRange(postDegreeGpa)) {
-			throw new IllegalArgumentException("Post-degree GPA must be between 0.0 and 4.0.");
-		}
-	}
+        if (!isGpaInRange(minPrevGpa)) {
+            throw new IllegalArgumentException("Previous GPA must be between 0.0 and 4.0.");
+        }
+        if (!isGpaInRange(postDegreeGpa)) {
+            throw new IllegalArgumentException("Post-degree GPA must be between 0.0 and 4.0.");
+        }
+    }
 
     private static boolean isGpaInRange(double value) {
-		return value >= MIN_GPA && value <= MAX_GPA;
-	}
+        return value >= MIN_GPA && value <= MAX_GPA;
+    }
 
-	public static String sanitize(String value) {
-		return value == null ? "" : value.trim();
-	}
-
-    
+    public static String sanitize(String value) {
+        return value == null ? "" : value.trim();
+    }
 
 }

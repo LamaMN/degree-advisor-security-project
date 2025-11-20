@@ -64,34 +64,38 @@ public class AuthService {
 	}
 
 	public Optional<User> authenticate(String username, char[] password) throws SQLException {
-		List<String> errors = Validator.validateLoginCredentials(username, password);
+		String errors = Validator.validateLoginCredentials(username, password);
 		if (!errors.isEmpty()) {
+			System.out.println("All fields must be filled.");
 			return Optional.empty();
 		}
-
+	
 		try (Connection connection = DatabaseManager.getConnection();
-				PreparedStatement statement = connection.prepareStatement(
-						"SELECT id, username, password_hash, salt, role FROM users WHERE lower(username) = lower(?)")) {
-
+			 PreparedStatement statement = connection.prepareStatement(
+					 "SELECT id, username, password_hash, salt, role FROM users WHERE lower(username) = lower(?)")) {
+	
 			statement.setString(1, username);
-
+	
 			try (ResultSet resultSet = statement.executeQuery()) {
 				if (!resultSet.next()) {
+					System.out.println("Wrong username or password.");
 					return Optional.empty();
 				}
-
+	
 				boolean matches = PasswordHasher.matches(password,
 						resultSet.getString("salt"),
 						resultSet.getString("password_hash"));
-
+	
 				if (!matches) {
+					System.out.println("Wrong username or password.");
 					return Optional.empty();
 				}
-
+	
 				return Optional.of(mapUser(resultSet));
 			}
 		}
 	}
+	
 
 	private static User mapUser(ResultSet resultSet) throws SQLException {
 		int id = resultSet.getInt("id");

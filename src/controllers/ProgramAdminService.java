@@ -3,10 +3,12 @@ package controllers;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import model.Program;
 import model.ProgramCategory;
 import model.ProgramRepository;
+import security.AuthService;
 import security.User;
 
 /**
@@ -58,9 +60,9 @@ public class ProgramAdminService {
 	public Program addProgram(String name, ProgramCategory category, double minSalary, double minPrevGpa,
 			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
 		validation.Validator.validateProgramInputs(name, category, minSalary, minPrevGpa, postDegreeGpa, interest);
-		
-		
-		return repository.addProgram(actor, validation.Validator.sanitize(name), category.getId(), minSalary, minPrevGpa, interest,
+
+		return repository.addProgram(actor, validation.Validator.sanitize(name), category.getId(), minSalary,
+				minPrevGpa, interest,
 				postDegreeGpa);
 	}
 
@@ -69,10 +71,11 @@ public class ProgramAdminService {
 		if (programId <= 0) {
 			throw new IllegalArgumentException("Invalid program identifier.");
 		}
-		
+
 		validation.Validator.validateProgramInputs(name, category, minSalary, minPrevGpa, postDegreeGpa, interest);
-		
-		repository.updateProgram(actor, programId, validation.Validator.sanitize(name), category.getId(), minSalary, minPrevGpa, interest,
+
+		repository.updateProgram(actor, programId, validation.Validator.sanitize(name), category.getId(), minSalary,
+				minPrevGpa, interest,
 				postDegreeGpa);
 	}
 
@@ -83,8 +86,13 @@ public class ProgramAdminService {
 		repository.deleteProgram(actor, programId);
 	}
 
-
-
+	public boolean authenticateAdminPassword(String username, char[] password) throws Exception {
+		AuthService authService = new AuthService();
+		Optional<User> user = authService.authenticate(username, password);
+		if (user.isPresent()) {
+			return true;
+		}
+		return false;
+	}
 
 }
-
