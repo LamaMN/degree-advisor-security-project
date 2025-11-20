@@ -49,7 +49,7 @@ import model.ProgramRepository;
 import security.User;
 
 public class MainFrame extends JFrame {
-private static final int SESSION_TIMEOUT_MS = 15_000;
+private static final int SESSION_TIMEOUT_MS = 15_000; // the maximum should be 3 min to run timeout for the user page
 	private final JTextField salaryField = new JTextField(15);
 	private final JSpinner gpaSpinner = new JSpinner(new SpinnerNumberModel(3.0, 0.0, 4.0, 0.1));
 	private JTextField gpaTextField = ((JSpinner.DefaultEditor) gpaSpinner.getEditor()).getTextField();

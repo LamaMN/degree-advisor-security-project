@@ -64,7 +64,7 @@ public class AdminFrame extends JFrame {
 	private static final Color CARD_BORDER = new Color(224, 229, 236);
 	private static final Color TEXT_PRIMARY = new Color(52, 58, 64);
 	private static final Color TEXT_MUTED = new Color(108, 117, 125);
-	private static final int SESSION_TIMEOUT_MS = 15_000;
+	private static final int SESSION_TIMEOUT_MS = 15_000; // the maximum should be 3 min to run timeout for the user page
 
 	private final ProgramAdminService adminService;
 	private final User adminUser;
