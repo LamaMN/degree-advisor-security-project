@@ -1,7 +1,9 @@
 package view;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -14,16 +16,22 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -36,15 +44,15 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
-import java.awt.RenderingHints;
 
 import controllers.ProgramAdminService;
-import java.util.Objects;
 import model.Program;
 import model.ProgramCategory;
 import security.User;
@@ -56,9 +64,11 @@ public class AdminFrame extends JFrame {
 	private static final Color CARD_BORDER = new Color(224, 229, 236);
 	private static final Color TEXT_PRIMARY = new Color(52, 58, 64);
 	private static final Color TEXT_MUTED = new Color(108, 117, 125);
+	private static final int SESSION_TIMEOUT_MS = 15_000;
 
 	private final ProgramAdminService adminService;
 	private final User adminUser;
+	private final Runnable onLogout;
 
 	private final DefaultTableModel programTableModel = new DefaultTableModel(
 			new String[] { "Program", "Category", "Min Salary", "Min Required GPA", "Interest", "Post-Degree GPA" },
@@ -82,6 +92,7 @@ public class AdminFrame extends JFrame {
 	private final JButton editProgramBtn = new JButton("Edit Selected");
 	private final JButton deleteProgramBtn = new JButton("Delete");
 	private final JButton addCategoryBtn = new JButton("Add Category");
+	private final JButton logoutButton = new JButton("Log Out");
 
 	private final JLabel statusLabel = new JLabel(" ");
 	private JPanel statsPanel;
@@ -91,11 +102,14 @@ public class AdminFrame extends JFrame {
 	private List<ProgramCategory> categoryCache = List.of();
 	private List<Program> programCache = List.of();
 	private Point mouseDownCompCoords;
+	private Timer inactivityTimer;
+	private AWTEventListener activityListener;
 
-	public AdminFrame(ProgramAdminService adminService) {
+	public AdminFrame(ProgramAdminService adminService, Runnable onLogout) {
 		super("Degree Advisor Admin Console");
 		this.adminService = Objects.requireNonNull(adminService, "adminService");
 		this.adminUser = Objects.requireNonNull(adminService.getActor(), "adminUser");
+		this.onLogout = Objects.requireNonNull(onLogout, "onLogout");
 		setUndecorated(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(1200, 720);
@@ -103,6 +117,7 @@ public class AdminFrame extends JFrame {
 		setResizable(true);
 		initUI();
 		refreshAllData();
+		setupSessionMonitoring();
 	}
 
 	private void initUI() {
@@ -138,6 +153,9 @@ public class AdminFrame extends JFrame {
 		JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
 		statusPanel.setOpaque(false);
 		statusPanel.add(statusLabel);
+		configureLogoutButton();
+		statusPanel.add(Box.createHorizontalStrut(10));
+		statusPanel.add(logoutButton);
 		container.add(statusPanel, BorderLayout.SOUTH);
 
 		return container;
@@ -414,6 +432,16 @@ public class AdminFrame extends JFrame {
 		button.setFocusPainted(false);
 		button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+	}
+
+	private void configureLogoutButton() {
+		styleSecondaryButton(logoutButton);
+		logoutButton.setText("Log Out");
+		logoutButton.setPreferredSize(new Dimension(110, 32));
+		for (var listener : logoutButton.getActionListeners()) {
+			logoutButton.removeActionListener(listener);
+		}
+		logoutButton.addActionListener(e -> performLogout());
 	}
 
 	private void styleLinkButton(JButton button) {
@@ -731,6 +759,71 @@ public class AdminFrame extends JFrame {
 		ProgramCategory created = adminService.createCategory(name, "");
 		setStatus("Category \"" + created.getName() + "\" created automatically.");
 		return created;
+	}
+
+	private void setupSessionMonitoring() {
+		inactivityTimer = new Timer(SESSION_TIMEOUT_MS, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				performLogout();
+			}
+		});
+		inactivityTimer.setRepeats(false);
+		inactivityTimer.start();
+
+		long mask = AWTEvent.KEY_EVENT_MASK | AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK;
+		activityListener = new AWTEventListener() {
+			@Override
+			public void eventDispatched(AWTEvent event) {
+				Object source = event.getSource();
+				if (source instanceof Component) {
+					Component component = (Component) source;
+					if (SwingUtilities.isDescendingFrom(component, getRootPane())) {
+						resetInactivityTimer();
+					}
+				}
+			}
+		};
+		Toolkit.getDefaultToolkit().addAWTEventListener(activityListener, mask);
+	}
+
+	private void resetInactivityTimer() {
+		if (inactivityTimer != null) {
+			inactivityTimer.restart();
+		}
+	}
+
+	private void performLogout() {
+		if (!isDisplayable()) {
+			return;
+		}
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				if (!isDisplayable()) {
+					return;
+				}
+				dispose();
+				onLogout.run();
+			}
+		});
+	}
+
+	private void cleanupSessionMonitoring() {
+		if (inactivityTimer != null) {
+			inactivityTimer.stop();
+			inactivityTimer = null;
+		}
+		if (activityListener != null) {
+			Toolkit.getDefaultToolkit().removeAWTEventListener(activityListener);
+			activityListener = null;
+		}
+	}
+
+	@Override
+	public void dispose() {
+		cleanupSessionMonitoring();
+		super.dispose();
 	}
 
 	private static final class RoundedPanel extends JPanel {

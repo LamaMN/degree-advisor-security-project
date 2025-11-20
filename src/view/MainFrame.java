@@ -1,7 +1,9 @@
 package view;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -10,13 +12,18 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Point;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -30,6 +37,8 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -40,6 +49,7 @@ import model.ProgramRepository;
 import security.User;
 
 public class MainFrame extends JFrame {
+private static final int SESSION_TIMEOUT_MS = 15_000;
 	private final JTextField salaryField = new JTextField(15);
 	private final JSpinner gpaSpinner = new JSpinner(new SpinnerNumberModel(3.0, 0.0, 4.0, 0.1));
 	private JTextField gpaTextField = ((JSpinner.DefaultEditor) gpaSpinner.getEditor()).getTextField();
@@ -60,16 +70,20 @@ public class MainFrame extends JFrame {
 	private final JLabel statusLabel = new JLabel(" ");
 	private final ProgramRepository repository;
 	private final User user;
+	private final Runnable onLogout;
+	private final JButton logoutButton = new JButton("Log Out");
+	private Timer inactivityTimer;
+	private AWTEventListener activityListener;
 
 	// For dragging window
 	private Point mouseDownCompCoords;
 
-	public MainFrame(ProgramRepository repository, User user) {
+	public MainFrame(ProgramRepository repository, User user, Runnable onLogout) {
 		super("  Degree Program Recommender");
-		this.repository = repository;
-		this.user = user;
+		this.repository = Objects.requireNonNull(repository, "repository");
+		this.user = Objects.requireNonNull(user, "user");
+		this.onLogout = Objects.requireNonNull(onLogout, "onLogout");
 
-		// Remove default window decorations
 		setUndecorated(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(1300, 600);
@@ -77,6 +91,7 @@ public class MainFrame extends JFrame {
 
 		initUI();
 		statusLabel.setText("Signed in as " + user.getUsername());
+		setupSessionMonitoring();
 	}
 
 	private void initUI() {
@@ -441,8 +456,24 @@ public class MainFrame extends JFrame {
 		statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 		statusLabel.setForeground(new Color(108, 117, 125));
 		panel.add(statusLabel);
+		configureLogoutButton();
+		panel.add(Box.createHorizontalStrut(15));
+		panel.add(logoutButton);
 
 		return panel;
+	}
+
+	private void configureLogoutButton() {
+		logoutButton.setBackground(new Color(88, 86, 214));
+		logoutButton.setForeground(Color.WHITE);
+		logoutButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+		logoutButton.setFocusPainted(false);
+		logoutButton.setBorder(BorderFactory.createEmptyBorder(6, 18, 6, 18));
+		for (var listener : logoutButton.getActionListeners()) {
+			logoutButton.removeActionListener(listener);
+		}
+		logoutButton.addActionListener(e -> performLogout());
+		logoutButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 	}
 
 	private void onRecommend() {
@@ -510,5 +541,70 @@ public class MainFrame extends JFrame {
 					String.format("%.2f hrs", r.suggestedExtraStudyHours)
 			});
 		}
+	}
+
+	private void setupSessionMonitoring() {
+		inactivityTimer = new Timer(SESSION_TIMEOUT_MS, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				performLogout();
+			}
+		});
+		inactivityTimer.setRepeats(false);
+		inactivityTimer.start();
+
+		long mask = AWTEvent.KEY_EVENT_MASK | AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK;
+		activityListener = new AWTEventListener() {
+			@Override
+			public void eventDispatched(AWTEvent event) {
+				Object source = event.getSource();
+				if (source instanceof Component) {
+					Component component = (Component) source;
+					if (SwingUtilities.isDescendingFrom(component, getRootPane())) {
+						resetInactivityTimer();
+					}
+				}
+			}
+		};
+		Toolkit.getDefaultToolkit().addAWTEventListener(activityListener, mask);
+	}
+
+	private void resetInactivityTimer() {
+		if (inactivityTimer != null) {
+			inactivityTimer.restart();
+		}
+	}
+
+	private void performLogout() {
+		if (!isDisplayable()) {
+			return;
+		}
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				if (!isDisplayable()) {
+					return;
+				}
+				dispose();
+				onLogout.run();
+			}
+		});
+	}
+
+	private void cleanupSessionMonitoring() {
+		if (inactivityTimer != null) {
+			inactivityTimer.stop();
+			inactivityTimer = null;
+		}
+		if (activityListener != null) {
+			Toolkit.getDefaultToolkit().removeAWTEventListener(activityListener);
+			activityListener = null;
+		}
+	}
+
+	@Override
+	public void dispose() {
+		cleanupSessionMonitoring();
+		super.dispose();
 	}
 }
