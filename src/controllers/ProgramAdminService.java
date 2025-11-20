@@ -8,15 +8,12 @@ import model.Program;
 import model.ProgramCategory;
 import model.ProgramRepository;
 import security.User;
-import validation.Validator;
 
 /**
  * Encapsulates all admin-level program and category management logic so it can
  * be exercised independently from the Swing UI.
  */
 public class ProgramAdminService {
-	private static final double MIN_GPA = 0.0;
-	private static final double MAX_GPA = 4.0;
 
 	private final ProgramRepository repository;
 	private final User actor;
