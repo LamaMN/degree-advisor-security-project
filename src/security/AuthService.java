@@ -66,7 +66,6 @@ public class AuthService {
 	public Optional<User> authenticate(String username, char[] password) throws SQLException {
 		String errors = Validator.validateLoginCredentials(username, password);
 		if (!errors.isEmpty()) {
-			System.out.println("All fields must be filled.");
 			return Optional.empty();
 		}
 	
@@ -78,7 +77,6 @@ public class AuthService {
 	
 			try (ResultSet resultSet = statement.executeQuery()) {
 				if (!resultSet.next()) {
-					System.out.println("Wrong username or password.");
 					return Optional.empty();
 				}
 	
