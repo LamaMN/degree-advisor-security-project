@@ -106,7 +106,12 @@ public class ProgramRepository {
 	public Program addProgram(User actor, String name, int categoryId, double minSalary, double minPrevGpa,
 			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
 		requireAdmin(actor);
-		validation.Validator.validateProgram(name, minSalary, minPrevGpa, postDegreeGpa);
+		 
+		if(findProgramByName(name)!=null) {
+			// to check if program exists
+			//handle error
+			throw new IllegalArgumentException("Program already exists.");
+		}
 
 		String sql = """
 				INSERT INTO programs(name, category_id, min_salary, min_previous_gpa, interest_level, post_degree_gpa)
@@ -124,11 +129,12 @@ public class ProgramRepository {
 
 			try (ResultSet keys = stmt.getGeneratedKeys()) {
 				if (keys.next()) {
-					return fetchProgramById(connection, keys.getInt(1));
+					return fetchProgramById(keys.getInt(1));
 				}
 			}
 		} catch (SQLException ex) {
 			if (isUniqueConstraintViolation(ex)) {
+				//error to uniqe constraint
 				throw new IllegalArgumentException("Program already exists.", ex);
 			}
 			throw ex;
@@ -155,7 +161,14 @@ public class ProgramRepository {
 			double minPrevGpa,
 			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
 		requireAdmin(actor);
-		validation.Validator.validateProgram(name, minSalary, minPrevGpa, postDegreeGpa);
+		
+		Program p1 = findProgramByName(name); // to check if program exists
+		Program p2 = fetchProgramById(programId);
+		if((p1!=null && p2!=null) &&(p1.getId()!=p2.getId())) {
+			//this statement to check if new name have been used in another program
+			//handle error
+			throw new IllegalArgumentException("Program already exists.");
+		}
 
 		String sql = """
 				UPDATE programs
@@ -175,7 +188,7 @@ public class ProgramRepository {
 		}
 	}
 
-	private Program fetchProgramById(Connection connection, int programId) throws SQLException {
+	private Program fetchProgramById(int programId) throws SQLException {
 		String sql = """
 				SELECT p.id, p.name, c.name AS category, p.min_salary, p.min_previous_gpa,
 				       p.interest_level, p.post_degree_gpa
@@ -183,7 +196,8 @@ public class ProgramRepository {
 				JOIN categories c ON p.category_id = c.id
 				WHERE p.id = ?
 				""";
-		try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
 			stmt.setInt(1, programId);
 			try (ResultSet rs = stmt.executeQuery()) {
 				if (rs.next()) {
@@ -218,4 +232,22 @@ public class ProgramRepository {
 			throw new SecurityException("Admin privileges are required for this operation.");
 		}
 	}
+
+
+	public Program findProgramByName(String name) throws SQLException {
+		String sql = "SELECT p.id, p.name, c.name AS category, p.min_salary, p.min_previous_gpa,p.interest_level, p.post_degree_gpa FROM programs p JOIN categories c ON p.category_id = c.id WHERE lower(p.name) = lower(?)";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setString(1, name.trim());
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return mapProgram(rs);
+				}
+			}
+		}
+		return null;
+	}
+
+
+
 }

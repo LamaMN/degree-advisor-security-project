@@ -533,6 +533,7 @@ public class AdminFrame extends JFrame {
 		updateProgramCategoryCombo();
 		refreshProgramTable();
 		updateStatsCards();
+		clearProgramForm();
 	}
 
 	private void updateProgramCategoryCombo() {

@@ -273,7 +273,7 @@ public class LoginFrame extends JFrame {
 		char[] password = loginPasswordField.getPassword();
 
 		// Use Validator
-		List<String> errors = Validator.validateCredentials(username, password);
+		List<String> errors = Validator.validateLoginCredentials(username, password);
 		if (!errors.isEmpty()) {
 			String errorMessage = String.join("\n", errors);
 			setStatus(loginStatusArea, errorMessage, Color.RED);
@@ -309,7 +309,7 @@ public class LoginFrame extends JFrame {
 		char[] password = registerPasswordField.getPassword();
 
 		// Use Validator
-		List<String> errors = Validator.validateCredentials(username, password);
+		List<String> errors = Validator.validateRegistraionCredentials(username, password);
 		if (!errors.isEmpty()) {
 			String errorMessage = String.join("\n", errors);
 			setStatus(registerStatusArea, errorMessage, Color.RED);

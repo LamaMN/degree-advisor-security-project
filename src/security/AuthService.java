@@ -14,11 +14,28 @@ import validation.Validator;
 
 public class AuthService {
 
+	public User findUserByName(String name) throws SQLException {
+		String sql = "SELECT id , username , role FROM users WHERE lower(username) = lower(?)";
+		try (Connection connection = DatabaseManager.getConnection();
+				PreparedStatement stmt = connection.prepareStatement(sql)) {
+			stmt.setString(1, name.trim());
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return mapUser(rs);
+				}
+			}
+		}
+		return null;
+	}
+
 	public User register(String username, char[] password) throws SQLException {
 		// Delegate validation
-		List<String> errors = Validator.validateCredentials(username, password);
+		List<String> errors = Validator.validateRegistraionCredentials(username, password);
 		if (!errors.isEmpty()) {
 			throw new IllegalArgumentException(String.join(" ", errors));
+		}
+		if (findUserByName(username) != null) {
+			throw new IllegalArgumentException("Username already exists. Pick another one.");
 		}
 
 		String salt = PasswordHasher.generateSalt();
@@ -40,39 +57,40 @@ public class AuthService {
 				}
 			}
 		} catch (SQLException ex) {
-			if (isUniqueConstraintViolation(ex)) {
-				throw new IllegalArgumentException("Username already exists. Pick another one.", ex);
-			}
-			throw ex;
+			throw new SQLException("Unable to create user record");
 		}
 
 		throw new SQLException("Unable to create user record");
 	}
 
 	public Optional<User> authenticate(String username, char[] password) throws SQLException {
-		// Delegate validation
-		List<String> errors = Validator.validateCredentials(username, password);
+		List<String> errors = Validator.validateLoginCredentials(username, password);
 		if (!errors.isEmpty()) {
-			return Optional.empty(); 
+			return Optional.empty();
 		}
 
 		try (Connection connection = DatabaseManager.getConnection();
 				PreparedStatement statement = connection.prepareStatement(
-						"SELECT id, username, password_hash, salt, role FROM users WHERE username = ?")) {
+						"SELECT id, username, password_hash, salt, role FROM users WHERE lower(username) = lower(?)")) {
+
 			statement.setString(1, username);
+
 			try (ResultSet resultSet = statement.executeQuery()) {
-				if (resultSet.next()) {
-					String storedHash = resultSet.getString("password_hash");
-					String salt = resultSet.getString("salt");
-					boolean matches = PasswordHasher.matches(password, salt, storedHash);
-					if (matches) {
-						return Optional.of(mapUser(resultSet));
-					}
+				if (!resultSet.next()) {
+					return Optional.empty();
 				}
+
+				boolean matches = PasswordHasher.matches(password,
+						resultSet.getString("salt"),
+						resultSet.getString("password_hash"));
+
+				if (!matches) {
+					return Optional.empty();
+				}
+
+				return Optional.of(mapUser(resultSet));
 			}
 		}
-
-		return Optional.empty();
 	}
 
 	private static User mapUser(ResultSet resultSet) throws SQLException {
@@ -83,8 +101,4 @@ public class AuthService {
 		return new User(id, username, role);
 	}
 
-	private static boolean isUniqueConstraintViolation(SQLException ex) {
-		// SQLite constraint violation code
-		return ex.getErrorCode() == 19 || "23000".equals(ex.getSQLState());
-	}
 }

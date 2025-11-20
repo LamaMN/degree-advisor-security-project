@@ -8,6 +8,7 @@ import model.Program;
 import model.ProgramCategory;
 import model.ProgramRepository;
 import security.User;
+import validation.Validator;
 
 /**
  * Encapsulates all admin-level program and category management logic so it can
@@ -38,7 +39,7 @@ public class ProgramAdminService {
 	}
 
 	public ProgramCategory createCategory(String name, String description) throws SQLException {
-		String sanitized = sanitize(name);
+		String sanitized = validation.Validator.sanitize(name);
 		if (sanitized.isEmpty()) {
 			throw new IllegalArgumentException("Category name is required.");
 		}
@@ -46,7 +47,7 @@ public class ProgramAdminService {
 	}
 
 	public ProgramCategory ensureCategoryExists(String name) throws SQLException {
-		String sanitized = sanitize(name);
+		String sanitized = validation.Validator.sanitize(name);
 		if (sanitized.isEmpty()) {
 			throw new IllegalArgumentException("Category is required.");
 		}
@@ -59,8 +60,10 @@ public class ProgramAdminService {
 
 	public Program addProgram(String name, ProgramCategory category, double minSalary, double minPrevGpa,
 			Program.InterestLevel interest, double postDegreeGpa) throws SQLException {
-		validateProgramInputs(name, category, minSalary, minPrevGpa, postDegreeGpa, interest);
-		return repository.addProgram(actor, sanitize(name), category.getId(), minSalary, minPrevGpa, interest,
+		validation.Validator.validateProgramInputs(name, category, minSalary, minPrevGpa, postDegreeGpa, interest);
+		
+		
+		return repository.addProgram(actor, validation.Validator.sanitize(name), category.getId(), minSalary, minPrevGpa, interest,
 				postDegreeGpa);
 	}
 
@@ -69,8 +72,10 @@ public class ProgramAdminService {
 		if (programId <= 0) {
 			throw new IllegalArgumentException("Invalid program identifier.");
 		}
-		validateProgramInputs(name, category, minSalary, minPrevGpa, postDegreeGpa, interest);
-		repository.updateProgram(actor, programId, sanitize(name), category.getId(), minSalary, minPrevGpa, interest,
+		
+		validation.Validator.validateProgramInputs(name, category, minSalary, minPrevGpa, postDegreeGpa, interest);
+		
+		repository.updateProgram(actor, programId, validation.Validator.sanitize(name), category.getId(), minSalary, minPrevGpa, interest,
 				postDegreeGpa);
 	}
 
@@ -81,34 +86,8 @@ public class ProgramAdminService {
 		repository.deleteProgram(actor, programId);
 	}
 
-	private static void validateProgramInputs(String name, ProgramCategory category, double minSalary,
-			double minPrevGpa, double postDegreeGpa, Program.InterestLevel interest) {
-		if (sanitize(name).isEmpty()) {
-			throw new IllegalArgumentException("Program name is required.");
-		}
-		if (category == null) {
-			throw new IllegalArgumentException("Category selection is required.");
-		}
-		if (interest == null) {
-			throw new IllegalArgumentException("Interest level is required.");
-		}
-		if (minSalary <= 0) {
-			throw new IllegalArgumentException("Minimum salary must be greater than zero.");
-		}
-		if (!isGpaInRange(minPrevGpa)) {
-			throw new IllegalArgumentException("Previous GPA must be between 0.0 and 4.0.");
-		}
-		if (!isGpaInRange(postDegreeGpa)) {
-			throw new IllegalArgumentException("Post-degree GPA must be between 0.0 and 4.0.");
-		}
-	}
 
-	private static boolean isGpaInRange(double value) {
-		return value >= MIN_GPA && value <= MAX_GPA;
-	}
 
-	private static String sanitize(String value) {
-		return value == null ? "" : value.trim();
-	}
+
 }
 
