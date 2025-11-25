@@ -38,6 +38,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
@@ -64,7 +65,7 @@ public class AdminFrame extends JFrame {
 	private static final Color CARD_BORDER = new Color(224, 229, 236);
 	private static final Color TEXT_PRIMARY = new Color(52, 58, 64);
 	private static final Color TEXT_MUTED = new Color(108, 117, 125);
-	private static final int SESSION_TIMEOUT_MS = 15_000; // the maximum should be 3 min to run timeout for the user page
+	private static final int SESSION_TIMEOUT_MS = 15_000;
 
 	private final ProgramAdminService adminService;
 	private final User adminUser;
@@ -252,7 +253,6 @@ public class AdminFrame extends JFrame {
 				BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
 				BorderFactory.createEmptyBorder(4, 8, 4, 8)));
 
-
 		programCategoryCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 		programCategoryCombo.setBackground(Color.WHITE);
 		programCategoryCombo.setBorder(BorderFactory.createCompoundBorder(
@@ -292,7 +292,7 @@ public class AdminFrame extends JFrame {
 				BorderFactory.createLineBorder(new Color(206, 212, 218), 1, true),
 				BorderFactory.createEmptyBorder(2, 4, 2, 4)));
 
-				programPostGpaSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		programPostGpaSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 		((JSpinner.DefaultEditor) programPostGpaSpinner.getEditor()).getTextField()
 				.setHorizontalAlignment(JTextField.CENTER);
 		((JSpinner.DefaultEditor) programPostGpaSpinner.getEditor()).getTextField()
@@ -473,6 +473,29 @@ public class AdminFrame extends JFrame {
 		}
 	}
 
+	private boolean authenticateAdmin() {
+		JPasswordField passwordField = new JPasswordField();
+		int option = JOptionPane.showConfirmDialog(this, passwordField, "Enter your password to proceed:",
+				JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+		if (option != JOptionPane.OK_OPTION) {
+			return false;
+		}
+		String password = new String(passwordField.getPassword());
+		String sanitizedPassword = validation.Validator.sanitize(password);
+		if (sanitizedPassword.isEmpty()) {
+			showError("Password is required.");
+			return false;
+		}
+		try {
+			return adminService.authenticateAdminPassword(adminUser.getUsername(), password.toCharArray());
+		} catch (SQLException ex) {
+			showError("Authentication failed: " + ex.getMessage());
+		} catch (Exception e) {
+			showError("Authentication error: " + e.getMessage());
+		}
+		return false;
+	}
+
 	private void onAddProgram() {
 		String name = programNameField.getText().trim();
 		String salaryText = programSalaryField.getText().trim();
@@ -486,7 +509,11 @@ public class AdminFrame extends JFrame {
 			double minGpa = ((Double) programMinGpaSpinner.getValue()).doubleValue();
 			double postGpa = ((Double) programPostGpaSpinner.getValue()).doubleValue();
 			Program.InterestLevel interest = (Program.InterestLevel) programInterestCombo.getSelectedItem();
-
+			if (!authenticateAdmin()) {
+				JOptionPane.showMessageDialog(this, "Authentication failed. Cannot add program.", "Error",
+						JOptionPane.ERROR_MESSAGE);
+				return;
+			}
 			adminService.addProgram(name, category, salary, minGpa, interest, postGpa);
 			clearProgramForm();
 			refreshAllData();
@@ -515,7 +542,11 @@ public class AdminFrame extends JFrame {
 			double minGpa = ((Double) programMinGpaSpinner.getValue()).doubleValue();
 			double postGpa = ((Double) programPostGpaSpinner.getValue()).doubleValue();
 			Program.InterestLevel interest = (Program.InterestLevel) programInterestCombo.getSelectedItem();
-
+			if (!authenticateAdmin()) {
+				JOptionPane.showMessageDialog(this, "Authentication failed. Cannot edit program.", "Error",
+						JOptionPane.ERROR_MESSAGE);
+				return;
+			}
 			adminService.updateProgram(program.getId(), programNameField.getText().trim(), category, salary, minGpa,
 					interest, postGpa);
 			refreshAllData();
@@ -545,6 +576,11 @@ public class AdminFrame extends JFrame {
 			return;
 		}
 		try {
+			if (!authenticateAdmin()) {
+				JOptionPane.showMessageDialog(this, "Authentication failed. Cannot delete program.", "Error",
+						JOptionPane.ERROR_MESSAGE);
+				return;
+			}
 			adminService.deleteProgram(program.getId());
 			refreshAllData();
 			setStatus("Program deleted.");
